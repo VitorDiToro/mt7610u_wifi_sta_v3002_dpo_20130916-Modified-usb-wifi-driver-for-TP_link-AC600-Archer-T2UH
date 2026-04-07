@@ -93,11 +93,12 @@ install_shutdown_service() {
     cat > "${SHUTDOWN_SVC}" <<'EOF'
 [Unit]
 Description=Cleanly unload mt7650u driver before network services stop
-# After=X means: on shutdown our ExecStop runs BEFORE X stops.
+# Before=X means: on shutdown our ExecStop runs BEFORE X stops.
 # This ensures ra0 is released and unloaded before NetworkManager,
 # networking.service, and tailscaled attempt their own shutdown sequences.
 DefaultDependencies=no
-After=NetworkManager.service networking.service tailscaled.service basic.target
+Before=NetworkManager.service networking.service tailscaled.service
+After=basic.target
 
 [Service]
 Type=oneshot
