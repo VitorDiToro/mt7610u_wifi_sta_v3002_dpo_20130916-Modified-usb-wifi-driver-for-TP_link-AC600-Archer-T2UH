@@ -499,7 +499,7 @@ int write_reg(
 	u32 value)
 {
 	int ret;
-	u8 req;
+	u8 req = 0;
 	u32 io_value;
 
 	if (base == 0x40)
@@ -519,8 +519,10 @@ int write_reg(
 
 	if (ret) {
 		DBGPRINT(RT_DEBUG_ERROR, ("write reg fail\n"));
-		return;
+		return ret;
 	}
+
+	return 0;
 }
 
 int read_reg(
@@ -530,7 +532,7 @@ int read_reg(
 	u32 *value)
 {
 	int ret;
-	u8 req;
+	u8 req = 0;
 	u32 io_value;
 	
 	if (base == 0x40)
@@ -551,6 +553,8 @@ int read_reg(
 
 	if (ret)
 		*value = 0xffffffff;
+
+	return ret;
 }
 
 /*
