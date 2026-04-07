@@ -10,10 +10,14 @@ MODULE=mt7650u_sta
 KO=os/linux/${MODULE}.ko
 DEST=/lib/modules/${KERNEL}/kernel/drivers/net/wireless/
 AUTOLOAD=/etc/modules-load.d/${MODULE}.conf
+DAT_SRC=conf/RT2870STA.dat
+DAT_DEST=/etc/Wireless/RT2870STA/RT2870STA.dat
+CRDA_CONF=/etc/default/crda
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 info()  { echo "[INFO]  $*"; }
+warn()  { echo "[WARN]  $*"; }
 error() { echo "[ERROR] $*" >&2; exit 1; }
 
 require_root() {
@@ -47,6 +51,41 @@ install_module() {
     info "Module installed."
 }
 
+install_config() {
+    info "Installing driver configuration file..."
+
+    [ -f "${DAT_SRC}" ] || error "Config file not found: ${DAT_SRC}. Is the repo complete?"
+
+    mkdir -p "$(dirname ${DAT_DEST})"
+    cp "${DAT_SRC}" "${DAT_DEST}"
+
+    # Set CountryCode and CountryRegion for Brazil (channels 1-13)
+    sed -i 's/^CountryCode=.*/CountryCode=BR/'    "${DAT_DEST}"
+    sed -i 's/^CountryRegion=.*/CountryRegion=1/' "${DAT_DEST}"
+
+    info "Config installed: ${DAT_DEST}"
+}
+
+configure_regulatory() {
+    info "Configuring regulatory domain (BR)..."
+
+    if [ -f "${CRDA_CONF}" ]; then
+        # Update REGDOMAIN if already present, otherwise append
+        if grep -q "^REGDOMAIN=" "${CRDA_CONF}"; then
+            sed -i 's/^REGDOMAIN=.*/REGDOMAIN=BR/' "${CRDA_CONF}"
+        else
+            echo "REGDOMAIN=BR" >> "${CRDA_CONF}"
+        fi
+    else
+        echo "REGDOMAIN=BR" > "${CRDA_CONF}"
+    fi
+
+    iw reg set BR 2>/dev/null || warn "iw reg set BR failed — crda may not be installed yet."
+    service crda restart 2>/dev/null || true
+
+    info "Regulatory domain set to BR (permanent)."
+}
+
 load_module() {
     info "Loading module..."
     if lsmod | grep -q "^${MODULE}"; then
@@ -69,18 +108,25 @@ enable_autoload() {
 verify() {
     info "Verifying..."
 
-    sleep 1  # give the interface a moment to appear
+    sleep 2  # give the interface time to appear
 
     if ip link show ra0 &>/dev/null; then
         MAC=$(cat /sys/class/net/ra0/address 2>/dev/null || echo unknown)
-        info "Interface ra0 is up — MAC: ${MAC}"
+        STATE=$(cat /sys/class/net/ra0/operstate 2>/dev/null || echo unknown)
+        info "Interface ra0 found — MAC: ${MAC} | state: ${STATE}"
+
+        if [ "${MAC}" = "02:11:22:33:44:55" ]; then
+            warn "MAC address is the hardcoded fallback (02:11:22:33:44:55)."
+            warn "The driver may still be failing to read the device EEPROM."
+            warn "Check: dmesg | grep -E 'mt7650u|rt28xx|fail'"
+        fi
     else
-        echo "[WARN]  Interface ra0 not found. Check: dmesg | grep mt7650u"
+        warn "Interface ra0 not found. Check: dmesg | grep mt7650u"
     fi
 
     echo ""
-    echo "── dmesg (mt7650u) ──────────────────────────────────────────────"
-    dmesg | grep mt7650u || true
+    echo "── dmesg (mt7650u / rt28xx) ─────────────────────────────────────"
+    dmesg | grep -E "mt7650u|rt28xx|RT2870|fail" || true
     echo "─────────────────────────────────────────────────────────────────"
     echo ""
     echo "Run the following to connect to a Wi-Fi network:"
@@ -94,6 +140,8 @@ require_root
 install_deps
 build
 install_module
+install_config          # copy RT2870STA.dat and set CountryCode=BR
+configure_regulatory    # set REGDOMAIN=BR permanently
 load_module
 enable_autoload
 verify
