@@ -92,17 +92,19 @@ install_shutdown_service() {
 
     cat > "${SHUTDOWN_SVC}" <<'EOF'
 [Unit]
-Description=Cleanly unload mt7650u driver before NetworkManager stops
-# Run our ExecStop before NetworkManager and the network stack tear down,
-# so the driver is already gone when NM tries to disconnect ra0.
+Description=Cleanly unload mt7650u driver before network services stop
+# After=X means: on shutdown our ExecStop runs BEFORE X stops.
+# This ensures ra0 is down before NetworkManager, networking.service,
+# and tailscaled attempt their own shutdown sequences.
 DefaultDependencies=no
-Before=NetworkManager.service network.target shutdown.target
+After=NetworkManager.service networking.service tailscaled.service basic.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStop=/bin/ip link set ra0 down
-ExecStop=/sbin/modprobe -r mt7650u_sta
+ExecStop=-/bin/ip link set ra0 down
+ExecStop=-/sbin/modprobe -r mt7650u_sta
+TimeoutStopSec=5
 
 [Install]
 WantedBy=multi-user.target
