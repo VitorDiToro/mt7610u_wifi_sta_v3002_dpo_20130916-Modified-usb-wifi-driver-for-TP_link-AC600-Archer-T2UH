@@ -15,9 +15,8 @@ The resulting module is `mt7650u_sta.ko`. The wireless interface appears as `ra0
 ## Quick Install
 
 ```bash
-sudo apt install -y build-essential git linux-headers-$(uname -r)
 git clone <this-repo>
-cd mt7610u_wifi_sta_v3002_dpo_20130916
+cd mt7610u_wifi_sta_v3002_dpo_20130916-Modified-usb-wifi-driver-for-TP_link-AC600-Archer-T2UH
 sudo bash install.sh
 ```
 
