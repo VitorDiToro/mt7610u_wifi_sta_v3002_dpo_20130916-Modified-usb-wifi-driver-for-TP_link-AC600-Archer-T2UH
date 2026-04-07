@@ -96,6 +96,8 @@ Description=Cleanly unload mt7650u driver before network services stop
 # After=X means: on shutdown our ExecStop runs BEFORE X stops.
 # (systemd inverts startup order on shutdown: if we start After=X,
 #  we stop Before=X — i.e. we stop first, then X stops.)
+# Drop-ins on the network services add Before=mt7650u-shutdown.service
+# to create explicit bidirectional ordering that systemd enforces.
 DefaultDependencies=no
 After=NetworkManager.service networking.service tailscaled.service basic.target
 
@@ -110,12 +112,26 @@ ExecStop=-/usr/bin/nmcli device set ra0 managed no
 # 2. Bring the interface down (triggers ndo_stop in the driver).
 ExecStop=-/bin/ip link set ra0 down
 # 3. Unload the driver — USB device is detached cleanly.
+#    modprobe -r on this driver can take ~50s (USB teardown in kernel);
+#    TimeoutStopSec must be long enough to let it complete.
 ExecStop=-/sbin/modprobe -r mt7650u_sta
-TimeoutStopSec=10
+TimeoutStopSec=90
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+    # Drop-ins: tell each network service it starts Before=mt7650u-shutdown.
+    # On shutdown (inverse order) this means those services stop AFTER us,
+    # guaranteeing ra0 is gone before NetworkManager/networking/tailscaled run
+    # their own teardown.
+    for SVC in NetworkManager networking tailscaled; do
+        mkdir -p "/etc/systemd/system/${SVC}.service.d"
+        cat > "/etc/systemd/system/${SVC}.service.d/mt7650u-order.conf" <<DROPIN
+[Unit]
+Before=mt7650u-shutdown.service
+DROPIN
+    done
 
     systemctl daemon-reload
     systemctl enable mt7650u-shutdown.service
