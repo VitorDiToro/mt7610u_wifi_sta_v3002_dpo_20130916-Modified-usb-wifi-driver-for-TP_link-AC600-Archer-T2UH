@@ -116,7 +116,9 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 	RTMP_ADAPTER *pAd = (RTMP_ADAPTER *)pAdSrc;
 	UINT index;
 	NDIS_STATUS Status;
-	
+
+	printk(KERN_INFO "mt7650u: rt28xx_init enter\n");
+
 	if (pAd == NULL)
 		return FALSE;
 
