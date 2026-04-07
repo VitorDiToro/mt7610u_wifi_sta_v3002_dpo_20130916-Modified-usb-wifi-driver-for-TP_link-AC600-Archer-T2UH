@@ -204,8 +204,11 @@ int rt28xx_init(VOID *pAdSrc, PSTRING pDefaultMac, PSTRING pHostName)
 		goto err1;
 #endif /* DOT11_N_SUPPORT */
 
-	/* Make sure MAC gets ready.*/
-	index = 0;
+	/* Make sure MAC gets ready.
+	 * On USB 3.0 ports the link may need extra time to stabilise before
+	 * the first vendor control request succeeds.  A short delay here avoids
+	 * WaitForAsicReady returning FALSE prematurely. */
+	RtmpOsMsDelay(200);
 	if (WaitForAsicReady(pAd) != TRUE)
 		goto err1;
 
