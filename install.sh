@@ -94,17 +94,24 @@ install_shutdown_service() {
 [Unit]
 Description=Cleanly unload mt7650u driver before network services stop
 # After=X means: on shutdown our ExecStop runs BEFORE X stops.
-# This ensures ra0 is down before NetworkManager, networking.service,
-# and tailscaled attempt their own shutdown sequences.
+# This ensures ra0 is released and unloaded before NetworkManager,
+# networking.service, and tailscaled attempt their own shutdown sequences.
 DefaultDependencies=no
 After=NetworkManager.service networking.service tailscaled.service basic.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# Ensure the service is marked active at boot so ExecStop is reliably called.
+ExecStart=/bin/true
+# 1. Tell NetworkManager to release ra0 immediately — prevents NM from
+#    sending deauth frames through the driver during its own shutdown.
+ExecStop=-/usr/bin/nmcli device set ra0 managed no
+# 2. Bring the interface down (triggers ndo_stop in the driver).
 ExecStop=-/bin/ip link set ra0 down
+# 3. Unload the driver — USB device is detached cleanly.
 ExecStop=-/sbin/modprobe -r mt7650u_sta
-TimeoutStopSec=5
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target
