@@ -1724,7 +1724,10 @@ int rt_ioctl_siwmlme(struct net_device *dev,
 			   char *extra)
 {
 	VOID   *pAd = NULL;
-	struct iw_mlme *pMlme = (struct iw_mlme *)wrqu->data.pointer;
+	/* Use extra (kernel-copied buffer) instead of wrqu->data.pointer
+	 * (user-space address) — dereferencing a user pointer in kernel
+	 * context causes an oops on kernel 4.15+. */
+	struct iw_mlme *pMlme = (struct iw_mlme *)extra;
 /*	MLME_QUEUE_ELEM				MsgElem; */
 /*	MLME_QUEUE_ELEM				*pMsgElem = NULL; */
 /*	MLME_DISASSOC_REQ_STRUCT	DisAssocReq; */
