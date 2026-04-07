@@ -111,11 +111,10 @@ ExecStart=/bin/true
 ExecStop=-/usr/bin/nmcli device set ra0 managed no
 # 2. Bring the interface down (triggers ndo_stop in the driver).
 ExecStop=-/bin/ip link set ra0 down
-# 3. Unload the driver — USB device is detached cleanly.
-#    modprobe -r on this driver can take ~50s (USB teardown in kernel);
-#    TimeoutStopSec must be long enough to let it complete.
-ExecStop=-/sbin/modprobe -r mt7650u_sta
-TimeoutStopSec=90
+# modprobe -r is intentionally omitted: on this driver the USB teardown
+# blocks in uninterruptible kernel sleep for 50-600s, causing NM and
+# tailscaled to hang. The kernel unloads the module cleanly at power-off.
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target
