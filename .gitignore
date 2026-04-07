@@ -33,3 +33,7 @@ include/mcu/mt7650_firmware.h
 tools/bin2h
 
 CLAUDE.md
+
+# Build system cache and marker files
+.cache.mk
+*.ur-safe
