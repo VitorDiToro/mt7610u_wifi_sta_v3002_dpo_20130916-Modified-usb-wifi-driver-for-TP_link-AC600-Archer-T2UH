@@ -13,6 +13,7 @@ AUTOLOAD=/etc/modules-load.d/${MODULE}.conf
 DAT_SRC=conf/RT2870STA.dat
 DAT_DEST=/etc/Wireless/RT2870STA/RT2870STA.dat
 CRDA_CONF=/etc/default/crda
+SHUTDOWN_SVC=/etc/systemd/system/mt7650u-shutdown.service
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,32 @@ configure_regulatory() {
     info "Regulatory domain set to BR (permanent)."
 }
 
+install_shutdown_service() {
+    info "Installing shutdown service to prevent NetworkManager hang..."
+
+    cat > "${SHUTDOWN_SVC}" <<'EOF'
+[Unit]
+Description=Cleanly unload mt7650u driver before NetworkManager stops
+# Run our ExecStop before NetworkManager and the network stack tear down,
+# so the driver is already gone when NM tries to disconnect ra0.
+DefaultDependencies=no
+Before=NetworkManager.service network.target shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStop=/bin/ip link set ra0 down
+ExecStop=/sbin/modprobe -r mt7650u_sta
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable mt7650u-shutdown.service
+    info "Shutdown service installed and enabled."
+}
+
 load_module() {
     info "Loading module..."
     if lsmod | grep -q "^${MODULE}"; then
@@ -142,6 +169,7 @@ build
 install_module
 install_config          # copy RT2870STA.dat and set CountryCode=BR
 configure_regulatory    # set REGDOMAIN=BR permanently
+install_shutdown_service
 load_module
 enable_autoload
 verify
