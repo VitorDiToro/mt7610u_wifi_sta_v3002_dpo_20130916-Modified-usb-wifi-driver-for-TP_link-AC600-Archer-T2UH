@@ -1724,15 +1724,18 @@ int rt_ioctl_siwmlme(struct net_device *dev,
 			   char *extra)
 {
 	VOID   *pAd = NULL;
-	/* Use extra (kernel-copied buffer) instead of wrqu->data.pointer
-	 * (user-space address) — dereferencing a user pointer in kernel
-	 * context causes an oops on kernel 4.15+. */
-	struct iw_mlme *pMlme = (struct iw_mlme *)extra;
+	/* On kernel 4.15 with SMAP, dereferencing a user-space pointer in
+	 * kernel context causes an oops. Use copy_from_user regardless of
+	 * whether extra or wrqu->data.pointer is provided, so the struct
+	 * always ends up in kernel memory before we access any field. */
+	struct iw_mlme mlme_local;
+	struct iw_mlme *pMlme = NULL;
 /*	MLME_QUEUE_ELEM				MsgElem; */
 /*	MLME_QUEUE_ELEM				*pMsgElem = NULL; */
 /*	MLME_DISASSOC_REQ_STRUCT	DisAssocReq; */
 /*	MLME_DEAUTH_REQ_STRUCT      DeAuthReq; */
 	ULONG Subcmd = 0;
+	void __user *user_ptr;
 
 	GET_PAD_FROM_NET_DEV(pAd, dev);
 
@@ -1746,8 +1749,15 @@ int rt_ioctl_siwmlme(struct net_device *dev,
         return -ENETDOWN;
 	}
 
-	if (pMlme == NULL)
+	/* Determine the source pointer (extra or wrqu->data.pointer) and
+	 * copy safely into kernel stack buffer to avoid SMAP faults. */
+	user_ptr = extra ? (void __user *)extra
+	                 : (void __user *)wrqu->data.pointer;
+	if (!user_ptr)
 		return -EINVAL;
+	if (copy_from_user(&mlme_local, user_ptr, sizeof(mlme_local)))
+		return -EFAULT;
+	pMlme = &mlme_local;
 
 
 	switch(pMlme->cmd)
