@@ -1438,6 +1438,7 @@ int RtmpOSNetDevAddrSet(
 	IN PUCHAR dev_name)
 {
 	struct net_device *net_dev;
+	UCHAR fallback_mac[6];
 
 	net_dev = pNetDev;
 /*	GET_PAD_FROM_NET_DEV(pAd, net_dev); */
@@ -1454,6 +1455,21 @@ int RtmpOSNetDevAddrSet(
 	}
 #endif /* CONFIG_STA_SUPPORT */
 
+	if (pMacAddr[0] == 0x00 && pMacAddr[1] == 0x00 && pMacAddr[2] == 0x00 &&
+		pMacAddr[3] == 0x00 && pMacAddr[4] == 0x00 && pMacAddr[5] == 0x00)
+	{
+		fallback_mac[0] = 0x02;
+		fallback_mac[1] = 0x11;
+		fallback_mac[2] = 0x22;
+		fallback_mac[3] = 0x33;
+		fallback_mac[4] = 0x44;
+		fallback_mac[5] = 0x55;
+		pMacAddr = fallback_mac;
+	}
+
+	printk(KERN_INFO "mt7650u: RtmpOSNetDevAddrSet: setting dev_addr=%02x:%02x:%02x:%02x:%02x:%02x\n",
+		pMacAddr[0], pMacAddr[1], pMacAddr[2],
+		pMacAddr[3], pMacAddr[4], pMacAddr[5]);
 	NdisMoveMemory(net_dev->dev_addr, pMacAddr, 6);
 
 	return 0;
@@ -1763,8 +1779,14 @@ int RtmpOSNetDevAttach(
 #endif /* CONFIG_APSTA_MIXED_SUPPORT */
 
 		/* copy the net device mac address to the net_device structure. */
+		printk(KERN_INFO "mt7650u: RtmpOSNetDevAttach: setting dev_addr from devAddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			pDevOpHook->devAddr[0], pDevOpHook->devAddr[1], pDevOpHook->devAddr[2],
+			pDevOpHook->devAddr[3], pDevOpHook->devAddr[4], pDevOpHook->devAddr[5]);
 		NdisMoveMemory(pNetDev->dev_addr, &pDevOpHook->devAddr[0],
 			       MAC_ADDR_LEN);
+		printk(KERN_INFO "mt7650u: RtmpOSNetDevAttach: dev_addr after copy=%02x:%02x:%02x:%02x:%02x:%02x\n",
+			pNetDev->dev_addr[0], pNetDev->dev_addr[1], pNetDev->dev_addr[2],
+			pNetDev->dev_addr[3], pNetDev->dev_addr[4], pNetDev->dev_addr[5]);
 
 		rtnl_locked = pDevOpHook->needProtcted;
 
@@ -1782,6 +1804,11 @@ int RtmpOSNetDevAttach(
 		ret = register_netdevice(pNetDev);
 	else
 		ret = register_netdev(pNetDev);
+
+	printk(KERN_INFO "mt7650u: register_netdev ret=%d, dev_addr after register=%02x:%02x:%02x:%02x:%02x:%02x\n",
+		ret,
+		pNetDev->dev_addr[0], pNetDev->dev_addr[1], pNetDev->dev_addr[2],
+		pNetDev->dev_addr[3], pNetDev->dev_addr[4], pNetDev->dev_addr[5]);
 
 	netif_stop_queue(pNetDev);
 
@@ -5570,4 +5597,3 @@ VOID RtmpOsTaskWakeUp(RTMP_OS_TASK *pTask)
 }
 
 #endif /* OS_ABL_FUNC_SUPPORT */
-

@@ -421,6 +421,12 @@ PNET_DEV RtmpPhyNetDevInit(
 	pNetDevHook->ioctl = rt28xx_ioctl;
 	pNetDevHook->priv_flags = InfId; /*INT_MAIN; */
 	pNetDevHook->get_stats = RT28xx_get_ether_stats;
+	pNetDevHook->devAddr[0] = 0x02;
+	pNetDevHook->devAddr[1] = 0x11;
+	pNetDevHook->devAddr[2] = 0x22;
+	pNetDevHook->devAddr[3] = 0x33;
+	pNetDevHook->devAddr[4] = 0x44;
+	pNetDevHook->devAddr[5] = 0x55;
 
 	pNetDevHook->needProtcted = FALSE;
 
@@ -860,7 +866,6 @@ struct net_device_stats *RT28xx_get_wds_ether_stats(
 /*    		return NULL; */
 }
 #endif /* WDS_SUPPORT */
-
 
 
 

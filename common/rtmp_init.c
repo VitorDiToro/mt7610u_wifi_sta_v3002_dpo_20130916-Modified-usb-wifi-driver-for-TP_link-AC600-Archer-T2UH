@@ -368,6 +368,22 @@ VOID NICReadEEPROMParameters(RTMP_ADAPTER *pAd, PSTRING mac_addr)
 	pAd->PermanentAddress[4] = (UCHAR)(Addr45 & 0xff);
 	pAd->PermanentAddress[5] = (UCHAR)(Addr45 >> 8);
 
+	/* Some MT7610U devices on older kernels expose an empty EEPROM MAC. */
+	if (pAd->PermanentAddress[0] == 0x00 &&
+		pAd->PermanentAddress[1] == 0x00 &&
+		pAd->PermanentAddress[2] == 0x00 &&
+		pAd->PermanentAddress[3] == 0x00 &&
+		pAd->PermanentAddress[4] == 0x00 &&
+		pAd->PermanentAddress[5] == 0x00)
+	{
+		pAd->PermanentAddress[0] = 0x02;
+		pAd->PermanentAddress[1] = 0x11;
+		pAd->PermanentAddress[2] = 0x22;
+		pAd->PermanentAddress[3] = 0x33;
+		pAd->PermanentAddress[4] = 0x44;
+		pAd->PermanentAddress[5] = 0x55;
+	}
+
 	/*more conveninet to test mbssid, so ap's bssid &0xf1*/
 	if (pAd->PermanentAddress[0] == 0xff)
 		pAd->PermanentAddress[0] = RandomByte(pAd)&0xf8;
@@ -3766,5 +3782,3 @@ IN  PRTMP_ADAPTER   pAd)
 					pAd->RxAnt.Pair1PrimaryRxAnt,
 					pAd->RxAnt.Pair1SecondaryRxAnt));
 }
-
-
